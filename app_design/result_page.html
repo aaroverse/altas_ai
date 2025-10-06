@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Menu Translation</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#4F46E5",
+              "background-light": "#F9FAFB",
+              "background-dark": "#111827",
+              "card-light": "#FFFFFF",
+              "card-dark": "#1F2937",
+              "text-light": "#111827",
+              "text-dark": "#F9FAFB",
+              "subtle-light": "#6B7280",
+              "subtle-dark": "#9CA3AF",
+              "border-light": "#E5E7EB",
+              "border-dark": "#374151",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.75rem",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+      }
+    </style>
+    <style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
+  </head>
+  <body class="bg-background-light dark:bg-background-dark font-display">
+    <div class="p-6">
+      <div class="flex justify-between items-center mb-8">
+        <div class="text-text-light dark:text-text-dark">
+          <p class="text-sm font-medium">9:03</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span
+            class="material-symbols-outlined text-text-light dark:text-text-dark text-base"
+            >signal_cellular_alt</span
+          >
+          <span
+            class="material-symbols-outlined text-text-light dark:text-text-dark text-base"
+            >wifi</span
+          >
+          <span
+            class="material-symbols-outlined text-text-light dark:text-text-dark text-base"
+            >battery_full</span
+          >
+        </div>
+      </div>
+      <header class="mb-8">
+        <h1 class="text-4xl font-bold text-text-light dark:text-text-dark mb-2">
+          Here's your menu
+        </h1>
+        <p class="text-subtle-light dark:text-subtle-dark text-lg">
+          We've translated and analyzed the dishes for you.
+        </p>
+      </header>
+      <main class="space-y-4">
+        <div
+          class="bg-card-light dark:bg-card-dark p-6 rounded-lg border border-border-light dark:border-border-dark"
+        >
+          <div class="flex justify-between items-start">
+            <h2
+              class="text-xl font-semibold text-text-light dark:text-text-dark mb-2"
+            >
+              Mapo Tofu
+            </h2>
+            <span class="material-symbols-outlined text-primary">star</span>
+          </div>
+          <p class="text-subtle-light dark:text-subtle-dark mb-4">
+            Silken tofu in a fiery and numbing sauce made with fermented black
+            beans, chili oil, and ground meat.
+          </p>
+          <p class="text-subtle-light dark:text-subtle-dark text-sm">
+            Original: 麻辣豆腐
+          </p>
+        </div>
+        <div
+          class="bg-card-light dark:bg-card-dark p-6 rounded-lg border border-border-light dark:border-border-dark"
+        >
+          <h2
+            class="text-xl font-semibold text-text-light dark:text-text-dark mb-2"
+          >
+            Oyster Sauce Lettuce
+          </h2>
+          <p class="text-subtle-light dark:text-subtle-dark mb-4">
+            Crisp and refreshing lettuce drizzled with savory oyster sauce, a
+            simple and flavorful side dish.
+          </p>
+          <p class="text-subtle-light dark:text-subtle-dark text-sm">
+            Original: 蚝油生菜
+          </p>
+        </div>
+        <div
+          class="bg-card-light dark:bg-card-dark p-6 rounded-lg border border-border-light dark:border-border-dark"
+        >
+          <h2
+            class="text-xl font-semibold text-text-light dark:text-text-dark mb-2"
+          >
+            Stir-Fried Oil Painting (Meat &amp; Vegetarian)
+          </h2>
+          <p class="text-subtle-light dark:text-subtle-dark mb-4">
+            A vibrant stir-fry featuring a colorful medley of vegetables and
+            thinly sliced meat, cooked in a savory sauce.
+          </p>
+          <p class="text-subtle-light dark:text-subtle-dark text-sm">
+            Original: 炒油画(肉素)
+          </p>
+        </div>
+        <div
+          class="bg-card-light dark:bg-card-dark p-6 rounded-lg border border-border-light dark:border-border-dark"
+        >
+          <h2
+            class="text-xl font-semibold text-text-light dark:text-text-dark mb-2"
+          >
+            Soy Bean Paste Lettuce
+          </h2>
+          <p class="text-subtle-light dark:text-subtle-dark mb-4">
+            Tender and crisp romaine lettuce stir-fried with fermented black
+            beans, creating a savory and umami-rich dish.
+          </p>
+          <p class="text-subtle-light dark:text-subtle-dark text-sm">
+            Original: 酱爆生菜
+          </p>
+        </div>
+      </main>
+      <footer
+        class="text-center text-xs text-subtle-light dark:text-subtle-dark mt-8 px-4"
+      >
+        Uploaded images are used only for processing and are not stored.
+      </footer>
+      <div class="fixed bottom-8 right-8">
+        <button
+          class="bg-primary text-white p-4 rounded-full shadow-lg flex items-center justify-center"
+        >
+          <span class="material-symbols-outlined">refresh</span>
+        </button>
+      </div>
+    </div>
+  </body>
+</html>

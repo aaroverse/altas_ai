@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MenuSense Settings</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#2962FF",
+              "background-light": "#F5F5F5",
+              "background-dark": "#121212",
+              "text-light": "#F5F5F5",
+              "text-dark": "#121212",
+              "subtle-light": "#A9A9A9",
+              "subtle-dark": "#A9A9A9",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.5rem",
+              lg: "1rem",
+              xl: "1.5rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+    <style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
+  </head>
+  <body class="bg-background-dark text-text-light">
+    <div class="min-h-screen flex flex-col font-display">
+      <header class="flex items-center p-4 border-b border-white/10">
+        <button class="p-2 -ml-2">
+          <svg
+            fill="currentColor"
+            height="24"
+            viewBox="0 0 256 256"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"
+            ></path>
+          </svg>
+        </button>
+        <h2 class="text-xl font-bold text-center flex-1 pr-8">
+          Profile &amp; Settings
+        </h2>
+      </header>
+      <main class="flex-grow p-6 space-y-8">
+        <section class="space-y-4">
+          <h3 class="text-sm font-medium text-subtle-dark">User Info</h3>
+          <div class="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+            <img
+              alt="User Avatar"
+              class="w-16 h-16 rounded-full"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfWPR62_y4cbfZNeuCUpFNrzMuRq2b6KIJH-ZgvcFIhdAFB3HZc9eFYE7Hwc7u7bWnNqLbmSSE-UNrL0xEk955oAWVCDpQhoGGTf4Lu2iG_aGsM9yzKZRctr7nUhnXHvUvr6WmpdO0fXAle_hlToPAXbpEEsm2vQfoptoiNbOeEjFlmd0UGl17ucS9nkDperuyiZgofl6EpoCPm8ri5HKiG0WkVvLJ04nnoomPD25KllNewIHYc_PQHMC1Oi6GIYBSB_QxWSy0kQI"
+            />
+            <div class="flex-1">
+              <p class="font-semibold text-text-light">Sophia Anderson</p>
+              <p class="text-subtle-dark">sophia.anderson@email.com</p>
+            </div>
+          </div>
+        </section>
+        <hr class="border-white/10" />
+        <section class="space-y-4">
+          <h3 class="text-sm font-medium text-subtle-dark">
+            Subscription Management
+          </h3>
+          <button
+            class="w-full flex items-center justify-between p-4 bg-white/5 rounded-lg text-left"
+          >
+            <div class="flex-1">
+              <p class="font-semibold text-text-light">MenuSense Pro</p>
+              <p class="text-sm text-primary">Active</p>
+            </div>
+            <svg
+              fill="currentColor"
+              height="20"
+              viewBox="0 0 256 256"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"
+              ></path>
+            </svg>
+          </button>
+        </section>
+        <hr class="border-white/10" />
+        <section class="space-y-4">
+          <h3 class="text-sm font-medium text-subtle-dark">Account Actions</h3>
+          <button
+            class="w-full flex items-center justify-between p-4 bg-primary/20 text-primary rounded-lg text-left"
+          >
+            <span class="font-semibold">Log Out</span>
+            <svg
+              fill="currentColor"
+              height="20"
+              viewBox="0 0 256 256"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M112,216a8,8,0,0,1-8,8,96.11,96.11,0,0,1-96-96,8,8,0,0,1,16,0,80.11,80.11,0,0,0,80,80A8,8,0,0,1,112,216Zm109.66-82.34-40-40a8,8,0,0,0-11.32,11.32L196.69,128H104a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,221.66,133.66ZM96,48a8,8,0,0,0-8-8A80.11,80.11,0,0,0,8,120a8,8,0,0,0,16,0,64.07,64.07,0,0,1,64-64A8,8,0,0,0,96,48Z"
+              ></path>
+            </svg>
+          </button>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
