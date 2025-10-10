@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:altas_ai/views/upgrade_view.dart';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,8 +8,13 @@ import '../services/subscription_manager.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onBack;
+  final Future<void> Function(String priceId) onUpgrade;
 
-  const ProfileScreen({super.key, required this.onBack});
+  const ProfileScreen({
+    super.key,
+    required this.onBack,
+    required this.onUpgrade,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -17,7 +23,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   final _fullNameController = TextEditingController();
-  File? _avatarFile;
+  Uint8List? _avatarBytes;
   Map<String, dynamic>? _subscriptionInfo;
 
   @override
@@ -59,18 +65,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _avatarFile = File(pickedFile.path);
+        _avatarBytes = bytes;
         _isLoading = true;
       });
 
       // Automatically upload the avatar
-      await _uploadAvatar();
+      await _uploadAvatar(pickedFile);
     }
   }
 
-  Future<void> _uploadAvatar() async {
-    if (_avatarFile == null) return;
+  Future<void> _uploadAvatar(XFile pickedFile) async {
+    if (_avatarBytes == null) return;
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -80,7 +87,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       // Upload to Supabase Storage with user folder structure
-      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileExt = pickedFile.path.split('.').last;
+      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final filePath = '${user.id}/$fileName';
 
       debugPrint('📤 Uploading avatar to: $filePath');
@@ -89,14 +97,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         await Supabase.instance.client.storage
             .from('avatars')
-            .upload(filePath, _avatarFile!);
+            .uploadBinary(filePath, _avatarBytes!);
       } catch (uploadError) {
         // If file exists, try to update it instead
         if (uploadError.toString().contains('already exists')) {
           debugPrint('🔄 File exists, updating instead...');
           await Supabase.instance.client.storage
               .from('avatars')
-              .update(filePath, _avatarFile!);
+              .updateBinary(filePath, _avatarBytes!);
         } else {
           rethrow; // Re-throw if it's a different error
         }
@@ -146,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _avatarFile = null; // Clear the temporary file
+          _avatarBytes = null; // Clear the temporary bytes
         });
       }
     }
@@ -292,77 +300,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Subscription Management',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (isActive) ...[
-              const Text(
-                'You have an active Traveler Pass! Manage your subscription through your device settings.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            ] else ...[
-              const Text(
-                'You\'re on the Free Plan with 3 scans per day.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Upgrade to Traveler Pass for:',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '• Unlimited scans',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const Text(
-                '• Ad-free experience',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const Text(
-                '• Priority support',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    // TODO: Navigate to subscription purchase screen
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text(
-                    'Get Traveler Pass',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Close',
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
+            UpgradeView(onCheckout: widget.onUpgrade),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Maybe Later',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
               ),
             ),
           ],
@@ -390,8 +335,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: const Color(0xFF4A90E2),
-                  backgroundImage: _avatarFile != null
-                      ? FileImage(_avatarFile!)
+                  backgroundImage: _avatarBytes != null
+                      ? MemoryImage(_avatarBytes!)
                       : (user?.userMetadata?['avatar_url'] != null
                                 ? NetworkImage(
                                     user!.userMetadata!['avatar_url'],
@@ -405,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Colors.white,
                           ),
                         )
-                      : (_avatarFile == null &&
+                      : (_avatarBytes == null &&
                                 user?.userMetadata?['avatar_url'] == null
                             ? const Icon(
                                 Icons.person,

@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,7 +12,7 @@ class ReadyView extends StatefulWidget {
   final VoidCallback onRemoveImage;
   final VoidCallback onUpgrade;
   final VoidCallback onProfile;
-  final File? imageFile;
+  final Uint8List? imageBytes;
   final String language;
   final ValueChanged<String?> onLanguageChanged;
   final User? user;
@@ -24,7 +25,7 @@ class ReadyView extends StatefulWidget {
     required this.onRemoveImage,
     required this.onUpgrade,
     required this.onProfile,
-    this.imageFile,
+    this.imageBytes,
     required this.language,
     required this.onLanguageChanged,
     this.user,
@@ -37,6 +38,7 @@ class ReadyView extends StatefulWidget {
 class _ReadyViewState extends State<ReadyView> {
   int _remainingScans = 3;
   bool _hasTravelerPass = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -52,6 +54,7 @@ class _ReadyViewState extends State<ReadyView> {
       setState(() {
         _remainingScans = remaining;
         _hasTravelerPass = hasPass;
+        _isLoading = false;
       });
     }
   }
@@ -124,8 +127,17 @@ class _ReadyViewState extends State<ReadyView> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Show remaining scans for free users
-              if (!_hasTravelerPass) ...[
+              // Show remaining scans or loading indicator
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10.0),
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (!_hasTravelerPass) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -133,8 +145,8 @@ class _ReadyViewState extends State<ReadyView> {
                   ),
                   decoration: BoxDecoration(
                     color: _remainingScans > 0
-                        ? Colors.green.withValues(alpha: 0.2)
-                        : Colors.red.withValues(alpha: 0.2),
+                        ? Colors.green.withOpacity(0.2)
+                        : Colors.red.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: _remainingScans > 0 ? Colors.green : Colors.red,
@@ -190,14 +202,14 @@ class _ReadyViewState extends State<ReadyView> {
                       color: theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: widget.imageFile != null
+                    child: widget.imageBytes != null
                         ? Stack(
                             alignment: Alignment.center,
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  widget.imageFile!,
+                                child: Image.memory(
+                                  widget.imageBytes!,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
                                   height: double.infinity,
@@ -256,7 +268,7 @@ class _ReadyViewState extends State<ReadyView> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: widget.imageFile != null ? widget.onSubmit : null,
+                onPressed: widget.imageBytes != null ? widget.onSubmit : null,
                 child: const Text(
                   'Decode Menu',
                   style: TextStyle(fontSize: 18),

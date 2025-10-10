@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -17,7 +17,10 @@ import 'views/result_view.dart';
 import 'views/error_view.dart';
 import 'views/auth_screen.dart';
 import 'views/profile_screen.dart';
+import 'views/upgrade_view.dart';
 import 'services/subscription_manager.dart';
+
+import 'package:url_launcher/url_launcher.dart';
 
 // Define the states of the application
 enum AppState { ready, processing, result, error }
@@ -27,9 +30,8 @@ Future<void> main() async {
 
   // Initialize Supabase with secure configuration
   await Supabase.initialize(
-    url: AppConfig.isConfigValid
-        ? AppConfig.supabaseUrl
-        : DevConfig.supabaseUrl,
+    url:
+        AppConfig.isConfigValid ? AppConfig.supabaseUrl : DevConfig.supabaseUrl,
     anonKey: AppConfig.isConfigValid
         ? AppConfig.supabaseAnonKey
         : DevConfig.supabaseAnonKey,
@@ -75,52 +77,52 @@ class MyApp extends StatelessWidget {
       ),
       scaffoldBackgroundColor: colorBackgroundDark,
       fontFamily: GoogleFonts.inter().fontFamily,
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
-          .copyWith(
-            displayLarge: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: colorTextDark,
-            ),
-            displayMedium: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: colorTextDark,
-            ),
-            displaySmall: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: colorTextDark,
-            ),
-            headlineLarge: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: colorTextDark,
-            ),
-            headlineMedium: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: colorTextDark,
-            ),
-            headlineSmall: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: colorTextDark,
-            ),
-            titleLarge: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: colorTextDark,
-            ),
-            titleMedium: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: colorTextDark,
-            ),
-            titleSmall: const TextStyle(
-              fontWeight: FontWeight.w500,
-              color: colorSubtleDark,
-            ),
-            bodyLarge: const TextStyle(color: colorTextDark),
-            bodyMedium: const TextStyle(color: colorSubtleDark),
-            bodySmall: const TextStyle(color: colorSubtleDark),
-            labelLarge: const TextStyle(
-              color: colorTextDark,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+      textTheme:
+          GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+        displayLarge: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: colorTextDark,
+        ),
+        displayMedium: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: colorTextDark,
+        ),
+        displaySmall: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: colorTextDark,
+        ),
+        headlineLarge: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: colorTextDark,
+        ),
+        headlineMedium: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: colorTextDark,
+        ),
+        headlineSmall: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: colorTextDark,
+        ),
+        titleLarge: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: colorTextDark,
+        ),
+        titleMedium: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: colorTextDark,
+        ),
+        titleSmall: const TextStyle(
+          fontWeight: FontWeight.w500,
+          color: colorSubtleDark,
+        ),
+        bodyLarge: const TextStyle(color: colorTextDark),
+        bodyMedium: const TextStyle(color: colorSubtleDark),
+        bodySmall: const TextStyle(color: colorSubtleDark),
+        labelLarge: const TextStyle(
+          color: colorTextDark,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colorPrimary,
@@ -259,7 +261,8 @@ class _HomePageState extends State<HomePage> {
   AppState _state = AppState.ready;
   List<MenuItem> _result = [];
   String _errorMessage = '';
-  File? _imageFile;
+  XFile? _imageFile;
+  Uint8List? _imageBytes;
   String _language = 'English';
 
   // Generic method to get an image
@@ -268,8 +271,10 @@ class _HomePageState extends State<HomePage> {
     final pickedFile = await picker.pickImage(source: source);
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _imageFile = pickedFile;
+        _imageBytes = bytes;
       });
     }
   }
@@ -288,6 +293,7 @@ class _HomePageState extends State<HomePage> {
   void _removeImage() {
     setState(() {
       _imageFile = null;
+      _imageBytes = null;
     });
   }
 
@@ -302,7 +308,7 @@ class _HomePageState extends State<HomePage> {
 
   // Method to submit the form
   Future<void> _submit() async {
-    if (_imageFile == null) return;
+    if (_imageFile == null || _imageBytes == null) return;
 
     // Check if user can scan
     final canScan = await SubscriptionManager.canScan();
@@ -328,12 +334,23 @@ class _HomePageState extends State<HomePage> {
       );
 
       request.fields['targetLanguage'] = _language;
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'file', // Use 'file' as the key for the webhook
-          _imageFile!.path,
-        ),
-      );
+
+      if (kIsWeb) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            _imageBytes!,
+            filename: _imageFile!.name,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file', // Use 'file' as the key for the webhook
+            _imageFile!.path,
+          ),
+        );
+      }
 
       final response = await request.send();
 
@@ -344,9 +361,8 @@ class _HomePageState extends State<HomePage> {
         // The direct webhook returns an 'output' key
         if (decodedResponse['output'] != null) {
           final List<dynamic> itemsJson = decodedResponse['output'];
-          final items = itemsJson
-              .map((item) => MenuItem.fromJson(item))
-              .toList();
+          final items =
+              itemsJson.map((item) => MenuItem.fromJson(item)).toList();
 
           // Sort the items to have recommended ones first
           items.sort((a, b) {
@@ -399,6 +415,7 @@ class _HomePageState extends State<HomePage> {
       _result = [];
       _errorMessage = '';
       _imageFile = null;
+      _imageBytes = null;
       _language = 'English';
     });
 
@@ -409,10 +426,53 @@ class _HomePageState extends State<HomePage> {
   void _goToProfile() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            ProfileScreen(onBack: () => Navigator.of(context).pop()),
+        builder: (context) => ProfileScreen(
+          onBack: () => Navigator.of(context).pop(),
+          onUpgrade: _redirectToCheckout,
+        ),
       ),
     );
+  }
+
+  Future<void> _redirectToCheckout(String priceId) async {
+    debugPrint('Attempting to redirect to checkout for price: $priceId');
+    // Show a loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Redirecting to checkout...')),
+    );
+
+    try {
+      final response = await Supabase.instance.client.functions.invoke(
+        'create-checkout-session',
+        body: {'priceId': priceId},
+      );
+
+      debugPrint('Edge function response: ${response.data}');
+
+      if (response.data != null && response.data['url'] != null) {
+        final checkoutUrl = response.data['url'];
+        debugPrint('Checkout URL: $checkoutUrl');
+        if (await canLaunchUrl(Uri.parse(checkoutUrl))) {
+          await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
+        } else {
+          debugPrint('Could not launch URL');
+          throw 'Could not launch $checkoutUrl';
+        }
+      } else {
+        debugPrint('Failed to create checkout session. Response: ${response.data}');
+        throw 'Failed to create checkout session.';
+      }
+    } catch (error) {
+      debugPrint('Error during checkout redirect: ${error.toString()}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${error.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   // Check if user has reached daily limit and show upgrade prompt
@@ -431,131 +491,18 @@ class _HomePageState extends State<HomePage> {
   void _showUpgradeDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          '🎉 Daily Limit Reached!',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'You\'ve used all 3 free scans for today!',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Upgrade to Traveler Pass',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '✅ Unlimited scans',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '✅ Ad-free experience',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '✅ Priority support',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '\$4.99/month or \$34.99/year',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Save 40% with yearly',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        content: UpgradeView(onCheckout: _redirectToCheckout),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    // TODO: Navigate to subscription purchase screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Subscription purchase coming soon!'),
-                        backgroundColor: Colors.blue,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text(
-                    'Get Traveler Pass',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  'Maybe Later',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Maybe Later',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -574,7 +521,7 @@ class _HomePageState extends State<HomePage> {
           onPickFromGallery: _pickFromGallery,
           onSubmit: _submit,
           onRemoveImage: _removeImage,
-          imageFile: _imageFile,
+          imageBytes: _imageBytes,
           language: _language,
           onLanguageChanged: _handleLanguageChanged,
           onUpgrade: () {},

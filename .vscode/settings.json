@@ -1,3 +1,6 @@
 {
-    "kiroAgent.configureMCP": "Disabled"
+    "kiroAgent.configureMCP": "Disabled",
+    "dart.flutterRunAdditionalArgs": [
+        "--web-port=3000"
+    ]
 }
