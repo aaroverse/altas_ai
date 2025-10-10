@@ -57,11 +57,11 @@ class MenuItemCard extends StatelessWidget {
                       color: theme.colorScheme.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.star_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Recommended',
                           style: TextStyle(

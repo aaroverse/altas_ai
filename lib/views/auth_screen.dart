@@ -25,9 +25,8 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb
-            ? null
-            : 'io.supabase.flutterquickstart://login-callback/',
+        redirectTo:
+            kIsWeb ? null : 'io.supabase.flutterquickstart://login-callback/',
         authScreenLaunchMode: LaunchMode.externalApplication,
       );
     } on AuthException catch (error) {
@@ -62,9 +61,8 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.facebook,
-        redirectTo: kIsWeb
-            ? null
-            : 'io.supabase.flutterquickstart://login-callback/',
+        redirectTo:
+            kIsWeb ? null : 'io.supabase.flutterquickstart://login-callback/',
         authScreenLaunchMode: LaunchMode.externalApplication,
       );
     } on AuthException catch (error) {
@@ -611,12 +609,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF4F46E5), width: 1),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(Icons.star, color: Colors.amber, size: 20),
+                    SizedBox(width: 8),
+                    Text(
                       'Traveler Pass',
                       style: TextStyle(
                         color: Colors.white,
@@ -624,8 +622,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       '• Unlimited • \$4.99/mo',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
