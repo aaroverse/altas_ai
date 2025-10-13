@@ -19,7 +19,9 @@ class _UpgradeViewState extends State<UpgradeView> {
   Widget build(BuildContext context) {
     final isAnnually = _selectedCycle == BillingCycle.annually;
     // Replace with your actual Price IDs
-    final priceId = isAnnually ? 'price_1SFAhOFQWjnlvKIaG8GSOjEa' : 'price_1SFAdwFQWjnlvKIaanNQoV5v';
+    final priceId = isAnnually
+        ? 'price_1SFAhOFQWjnlvKIaG8GSOjEa'
+        : 'price_1SFAdwFQWjnlvKIaanNQoV5v';
     final priceString = isAnnually ? '\$34.99/year' : '\$4.99/month';
 
     return Column(
@@ -50,14 +52,16 @@ class _UpgradeViewState extends State<UpgradeView> {
             isSelected: [!isAnnually, isAnnually],
             onPressed: (index) {
               setState(() {
-                _selectedCycle = index == 1 ? BillingCycle.annually : BillingCycle.monthly;
+                _selectedCycle =
+                    index == 1 ? BillingCycle.annually : BillingCycle.monthly;
               });
             },
             borderRadius: BorderRadius.circular(12),
             selectedColor: Colors.white,
             color: Colors.grey,
             fillColor: Theme.of(context).colorScheme.primary,
-            splashColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            splashColor:
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
             borderWidth: 0,
             children: const [
               Padding(
@@ -105,11 +109,16 @@ class _UpgradeViewState extends State<UpgradeView> {
             onPressed: _isCheckingOut
                 ? null
                 : () async {
+                    print('🔵 Upgrade button clicked with priceId: $priceId');
                     setState(() {
                       _isCheckingOut = true;
                     });
                     try {
+                      print('🔵 Calling onCheckout function...');
                       await widget.onCheckout(priceId);
+                      print('🔵 onCheckout function completed');
+                    } catch (error) {
+                      print('🔴 Error in onCheckout: $error');
                     } finally {
                       if (mounted) {
                         setState(() {

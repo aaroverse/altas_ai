@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS public.user_subscriptions (
     plan_duration TEXT, -- 'monthly', 'yearly' (null for free)
     start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     end_date TIMESTAMP WITH TIME ZONE,
-    platform TEXT, -- 'ios', 'android', 'web'
+    platform TEXT, -- 'ios', 'android', 'web', 'stripe'
     transaction_id TEXT, -- Store platform-specific transaction ID
+    stripe_subscription_id TEXT, -- Stripe subscription ID for webhook handling
+    stripe_price_id TEXT, -- Stripe price ID for plan identification
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id) -- One subscription per user
@@ -135,6 +137,10 @@ CREATE TRIGGER handle_updated_at_profiles
 CREATE TRIGGER handle_updated_at_subscriptions
     BEFORE UPDATE ON public.user_subscriptions
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- Create index for faster lookups by Stripe subscription ID
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_stripe_subscription_id 
+ON public.user_subscriptions(stripe_subscription_id);
 
 CREATE TRIGGER handle_updated_at_daily_usage
     BEFORE UPDATE ON public.daily_usage

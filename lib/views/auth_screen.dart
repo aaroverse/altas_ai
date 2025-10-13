@@ -99,17 +99,51 @@ class _AuthScreenState extends State<AuthScreen> {
     });
     try {
       if (_isSignUp) {
-        await Supabase.instance.client.auth.signUp(
+        final response = await Supabase.instance.client.auth.signUp(
           email: _emailController.text,
           password: _passwordController.text,
         );
+
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Check your email for verification link'),
-            backgroundColor: Colors.green,
-          ),
-        );
+
+        // Check if user already exists
+        if (response.user != null &&
+            response.user!.identities?.isEmpty == true) {
+          // User already exists but not confirmed
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'This email is already registered. Please sign in or check your email for verification link.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          // Switch to sign-in view
+          setState(() {
+            _isSignUp = false;
+            _passwordController.clear();
+            _confirmPasswordController.clear();
+            _formKey.currentState?.reset();
+          });
+        } else {
+          // New user created successfully
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Check your email for verification link'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          // Switch to sign-in view after successful sign-up
+          setState(() {
+            _isSignUp = false;
+            _emailController.clear();
+            _passwordController.clear();
+            _confirmPasswordController.clear();
+            _formKey.currentState?.reset();
+          });
+        }
       } else {
         await Supabase.instance.client.auth.signInWithPassword(
           email: _emailController.text,

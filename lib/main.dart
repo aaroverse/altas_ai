@@ -257,7 +257,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   AppState _state = AppState.ready;
   List<MenuItem> _result = [];
   String _errorMessage = '';
@@ -435,32 +435,68 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _redirectToCheckout(String priceId) async {
+    print('🟢 _redirectToCheckout called with priceId: $priceId');
     debugPrint('Attempting to redirect to checkout for price: $priceId');
+
+    // Check if user is authenticated
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      debugPrint('User not authenticated');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please log in to continue'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+      return;
+    }
+
     // Show a loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Redirecting to checkout...')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Redirecting to checkout...')),
+      );
+    }
 
     try {
+      debugPrint('User authenticated: ${user.id}');
+      debugPrint('Calling edge function with priceId: $priceId');
+
+      // Verify we have a valid session
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw 'No valid session found. Please log in again.';
+      }
+
       final response = await Supabase.instance.client.functions.invoke(
         'create-checkout-session',
         body: {'priceId': priceId},
       );
 
-      debugPrint('Edge function response: ${response.data}');
+      debugPrint('Edge function response status: ${response.status}');
+      debugPrint('Edge function response data: ${response.data}');
 
-      if (response.data != null && response.data['url'] != null) {
-        final checkoutUrl = response.data['url'];
-        debugPrint('Checkout URL: $checkoutUrl');
-        if (await canLaunchUrl(Uri.parse(checkoutUrl))) {
-          await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
+      if (response.status == 200 && response.data != null) {
+        if (response.data['url'] != null) {
+          final checkoutUrl = response.data['url'];
+          debugPrint('Checkout URL: $checkoutUrl');
+
+          if (await canLaunchUrl(Uri.parse(checkoutUrl))) {
+            await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
+          } else {
+            debugPrint('Could not launch URL');
+            throw 'Could not launch $checkoutUrl';
+          }
+        } else if (response.data['error'] != null) {
+          throw 'Server error: ${response.data['error']}';
         } else {
-          debugPrint('Could not launch URL');
-          throw 'Could not launch $checkoutUrl';
+          throw 'Invalid response from server: missing URL';
         }
       } else {
-        debugPrint('Failed to create checkout session. Response: ${response.data}');
-        throw 'Failed to create checkout session.';
+        final errorMessage = response.data?['error'] ?? 'Unknown server error';
+        throw 'Server responded with status ${response.status}: $errorMessage';
       }
     } catch (error) {
       debugPrint('Error during checkout redirect: ${error.toString()}');
@@ -469,6 +505,7 @@ class _HomePageState extends State<HomePage> {
           SnackBar(
             content: Text('Error: ${error.toString()}'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -524,7 +561,7 @@ class _HomePageState extends State<HomePage> {
           imageBytes: _imageBytes,
           language: _language,
           onLanguageChanged: _handleLanguageChanged,
-          onUpgrade: () {},
+          onUpgrade: () => _showUpgradeDialog(),
           onProfile: _goToProfile,
         );
       case AppState.processing:
@@ -534,6 +571,37 @@ class _HomePageState extends State<HomePage> {
       case AppState.error:
         return ErrorView(message: _errorMessage, onReset: _resetState);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh subscription status when app becomes active
+      // This helps catch subscription changes from Stripe payments
+      _refreshSubscriptionStatus();
+    }
+  }
+
+  Future<void> _refreshSubscriptionStatus() async {
+    // Force refresh of subscription status
+    // This will be called when the app resumes, which happens after
+    // returning from Stripe checkout
+    setState(() {
+      // Trigger a rebuild which will refresh subscription checks
+    });
   }
 
   @override

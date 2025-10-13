@@ -22,6 +22,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
+  bool _isLoadingSubscription = true;
+  bool _isProcessingSubscription = false;
   final _fullNameController = TextEditingController();
   Uint8List? _avatarBytes;
   Map<String, dynamic>? _subscriptionInfo;
@@ -31,12 +33,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUserData();
     _loadSubscriptionInfo();
+    _fetchAppConfig();
+  }
+
+  Future<void> _fetchAppConfig() async {
+    await SubscriptionManager.fetchFreeDailyLimit();
   }
 
   void _loadUserData() {
     final user = Supabase.instance.client.auth.currentUser;
-    _fullNameController.text =
-        user?.userMetadata?['full_name'] ??
+    _fullNameController.text = user?.userMetadata?['full_name'] ??
         user?.userMetadata?['name'] ??
         user?.email?.split('@')[0] ??
         'User';
@@ -48,10 +54,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _subscriptionInfo = info;
+          _isLoadingSubscription = false;
         });
       }
     } catch (error) {
       debugPrint('Error loading subscription info: $error');
+      if (mounted) {
+        setState(() {
+          _isLoadingSubscription = false;
+        });
+      }
     }
   }
 
@@ -88,7 +100,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Upload to Supabase Storage with user folder structure
       final fileExt = pickedFile.path.split('.').last;
-      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final fileName =
+          'avatar_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final filePath = '${user.id}/$fileName';
 
       debugPrint('📤 Uploading avatar to: $filePath');
@@ -290,30 +303,471 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showSubscriptionManagement() {
     final isActive = _subscriptionInfo?['isActive'] ?? false;
 
+    if (isActive) {
+      // Show subscription details and cancellation option for Traveler Pass users
+      _showTravelerPassManagement();
+    } else {
+      // Show upgrade options for free users
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) => Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              UpgradeView(onCheckout: widget.onUpgrade),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Maybe Later',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showTravelerPassManagement() {
+    final plan = _subscriptionInfo?['plan'] ?? 'Traveler Pass';
+    final planDuration = _subscriptionInfo?['planDuration'] ?? 'monthly';
+    final endDate = _subscriptionInfo?['endDate'];
+    final isCancelling = _subscriptionInfo?['isCancelling'] ?? false;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1A1A1A),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            UpgradeView(onCheckout: widget.onUpgrade),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Maybe Later',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+      builder: (context) => SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isCancelling
+                          ? Colors.orange.withValues(alpha: 0.2)
+                          : Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isCancelling ? Icons.schedule : Icons.check_circle,
+                      color: isCancelling ? Colors.orange : Colors.green,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          plan,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          planDuration == 'yearly'
+                              ? 'Annual Plan'
+                              : 'Monthly Plan',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              if (isCancelling) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline,
+                          color: Colors.orange, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Subscription will end on ${endDate != null ? _formatDate(endDate) : 'billing date'}',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    _buildBenefitRow(Icons.camera_alt, 'Unlimited scans'),
+                    const SizedBox(height: 12),
+                    _buildBenefitRow(Icons.language, 'All languages'),
+                    const SizedBox(height: 12),
+                    _buildBenefitRow(Icons.support_agent, 'Priority support'),
+                    if (endDate != null) ...[
+                      const SizedBox(height: 16),
+                      const Divider(color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isCancelling ? 'Access until:' : 'Renews on:',
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 14),
+                          ),
+                          Text(
+                            _formatDate(endDate),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (isCancelling)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showResumeConfirmation();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Resume Subscription',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showCancelConfirmation();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel Subscription',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildBenefitRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.green, size: 20),
+        const SizedBox(width: 12),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  Future<void> _showCancelConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: const Text(
+          'Cancel Subscription?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to cancel your Traveler Pass? You will lose access to unlimited scans at the end of your current billing period.',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Keep Subscription',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Cancel Subscription'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _cancelSubscription();
+    }
+  }
+
+  Future<void> _cancelSubscription() async {
+    setState(() {
+      _isProcessingSubscription = true;
+    });
+
+    try {
+      final success = await SubscriptionManager.cancelSubscription();
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Subscription cancelled successfully. You will have access until the end of your billing period.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          // Reload subscription info
+          await _loadSubscriptionInfo();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  'Failed to cancel subscription. Please try again or contact support.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      debugPrint('Error cancelling subscription: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${error.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingSubscription = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showResumeConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: const Text(
+          'Resume Subscription?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Your subscription will continue and you will be charged at the next billing cycle. You will keep unlimited access to all features.',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.only(bottom: 16, left: 24, right: 24),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Confirm',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _resumeSubscription();
+    }
+  }
+
+  Future<void> _resumeSubscription() async {
+    setState(() {
+      _isProcessingSubscription = true;
+    });
+
+    try {
+      final success = await SubscriptionManager.resumeSubscription();
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Subscription resumed successfully! Your subscription will continue as normal.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          // Reload subscription info
+          await _loadSubscriptionInfo();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  'Failed to resume subscription. Please try again or contact support.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      debugPrint('Error resuming subscription: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${error.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingSubscription = false;
+        });
+      }
+    }
   }
 
   Widget _buildUserInfoCard() {
@@ -338,11 +792,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundImage: _avatarBytes != null
                       ? MemoryImage(_avatarBytes!)
                       : (user?.userMetadata?['avatar_url'] != null
-                                ? NetworkImage(
-                                    user!.userMetadata!['avatar_url'],
-                                  )
-                                : null)
-                            as ImageProvider?,
+                          ? NetworkImage(
+                              user!.userMetadata!['avatar_url'],
+                            )
+                          : null) as ImageProvider?,
                   child: _isLoading
                       ? const CircularProgressIndicator(
                           strokeWidth: 2,
@@ -351,13 +804,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         )
                       : (_avatarBytes == null &&
-                                user?.userMetadata?['avatar_url'] == null
-                            ? const Icon(
-                                Icons.person,
-                                size: 30,
-                                color: Colors.white,
-                              )
-                            : null),
+                              user?.userMetadata?['avatar_url'] == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 30,
+                              color: Colors.white,
+                            )
+                          : null),
                 ),
                 if (!_isLoading)
                   Positioned(
@@ -423,10 +876,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSubscriptionCard() {
+    if (_isLoadingSubscription) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 18,
+                    width: 120,
+                    child: LinearProgressIndicator(
+                      backgroundColor: Color(0xFF3A3A3A),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF4A4A4A)),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  SizedBox(
+                    height: 14,
+                    width: 80,
+                    child: LinearProgressIndicator(
+                      backgroundColor: Color(0xFF3A3A3A),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF4A4A4A)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final plan = _subscriptionInfo?['plan'] ?? 'Free Plan';
     final status = _subscriptionInfo?['status'] ?? 'Active';
     final scans = _subscriptionInfo?['scans'] ?? '0/3 today';
     final isActive = _subscriptionInfo?['isActive'] ?? false;
+    final isCancelling = _subscriptionInfo?['isCancelling'] ?? false;
+    final endDate = _subscriptionInfo?['endDate'];
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -460,7 +963,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: isCancelling ? Colors.orange : Colors.green,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
@@ -479,14 +982,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     status,
                     style: TextStyle(
-                      color: isActive ? Colors.green : Colors.grey,
+                      color: isCancelling
+                          ? Colors.orange
+                          : (isActive ? Colors.green : Colors.grey),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    scans,
+                    isCancelling && endDate != null
+                        ? 'Until ${_formatDate(endDate)}'
+                        : scans,
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
@@ -540,67 +1047,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A1A),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: widget.onBack,
-        ),
-        title: const Text(
-          'Profile & Settings',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFF1A1A1A),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF1A1A1A),
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: _isLoading || _isProcessingSubscription
+                  ? null
+                  : widget.onBack,
+            ),
+            title: const Text(
+              'Profile & Settings',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          body: AbsorbPointer(
+            absorbing: _isLoading || _isProcessingSubscription,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'User Info',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildUserInfoCard(),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Subscription Management',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSubscriptionCard(),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Account Actions',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLogOutButton(),
+                ],
+              ),
+            ),
           ),
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'User Info',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+        if (_isLoading)
+          Container(
+            color: Colors.black.withValues(alpha: 0.7),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Processing...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            _buildUserInfoCard(),
-
-            const SizedBox(height: 32),
-            const Text(
-              'Subscription Management',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+          ),
+        if (_isProcessingSubscription)
+          Container(
+            color: Colors.black.withValues(alpha: 0.7),
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Updating subscription...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            _buildSubscriptionCard(),
-
-            const SizedBox(height: 32),
-            const Text(
-              'Account Actions',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildLogOutButton(),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }
