@@ -1,13 +1,13 @@
 [build]
-  # Build command for Flutter web
-  command = "git clone https://github.com/flutter/flutter.git --depth 1 --branch $FLUTTER_VERSION && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter doctor && flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=WEBHOOK_URL=$WEBHOOK_URL --dart-define=PRODUCTION=true"
+  # Build command - using pre-built files
+  command = "echo 'Deploy pre-built Flutter web app'"
   
   # Output directory after build
   publish = "build/web"
 
 [build.environment]
-  # Flutter version to use
-  FLUTTER_VERSION = "3.22.2"
+  # Node version for any build tools
+  NODE_VERSION = "18"
 
 # Redirect rules for Flutter web routing
 [[redirects]]
