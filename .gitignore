@@ -80,3 +80,7 @@ linux/flutter/ephemeral/
 android/app/build/
 android/.gradle/
 key.properties
+
+lib/config/dev_config.dart
+.env
+*.env
