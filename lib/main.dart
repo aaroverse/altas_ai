@@ -333,6 +333,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       );
 
+      // Add authorization header for Supabase Edge Function
+      request.headers['Authorization'] =
+          'Bearer ${AppConfig.isConfigValid ? AppConfig.supabaseAnonKey : DevConfig.supabaseAnonKey}';
+      request.headers['apikey'] = AppConfig.isConfigValid
+          ? AppConfig.supabaseAnonKey
+          : DevConfig.supabaseAnonKey;
+
       request.fields['targetLanguage'] = _language;
 
       if (kIsWeb) {
