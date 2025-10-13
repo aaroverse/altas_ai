@@ -11,11 +11,11 @@ class AppConfig {
     defaultValue: 'your-anon-key-here', // Fallback for development
   );
 
-  // Webhook Configuration
+  // Webhook Configuration - Using Supabase Edge Function as HTTPS proxy
   static const String webhookUrl = String.fromEnvironment(
     'WEBHOOK_URL',
     defaultValue:
-        'http://srv858154.hstgr.cloud:5678/webhook/afb1492e-cda4-44d5-9906-f91d7525d003',
+        'https://gkpanxesanutgpwhsuzr.supabase.co/functions/v1/process-menu',
   );
 
   // App Configuration

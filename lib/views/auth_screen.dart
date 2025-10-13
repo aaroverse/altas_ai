@@ -111,12 +111,12 @@ class _AuthScreenState extends State<AuthScreen> {
             response.user!.identities?.isEmpty == true) {
           // User already exists but not confirmed
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
+            const SnackBar(
+              content: Text(
                 'This email is already registered. Please sign in or check your email for verification link.',
               ),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 5),
+              duration: Duration(seconds: 5),
             ),
           );
           // Switch to sign-in view

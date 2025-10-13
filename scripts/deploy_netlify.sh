@@ -17,7 +17,7 @@ fi
 # For local testing, you can set them here
 SUPABASE_URL="${SUPABASE_URL:-https://gkpanxesanutgpwhsuzr.supabase.co}"
 SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcGFueGVzYW51dGdwd2hzdXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0ODQyNzcsImV4cCI6MjA3NTA2MDI3N30.PX21IVUdTc1jmVDkNdZtUi0BTpK0jHfPJDi3M1NFsDE}"
-WEBHOOK_URL="${WEBHOOK_URL:-http://srv858154.hstgr.cloud:5678/webhook/afb1492e-cda4-44d5-9906-f91d7525d003}"
+WEBHOOK_URL="${WEBHOOK_URL:-https://gkpanxesanutgpwhsuzr.supabase.co/functions/v1/process-menu}"
 
 echo "📦 Cleaning previous builds..."
 flutter clean
