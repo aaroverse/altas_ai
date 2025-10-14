@@ -18,17 +18,29 @@ class _AuthScreenState extends State<AuthScreen> {
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  // TEMPORARILY DISABLED - Google OAuth needs configuration
+  // ignore: unused_element
   Future<void> _signInWithGoogle() async {
     setState(() {
       _isLoading = true;
     });
     try {
-      await Supabase.instance.client.auth.signInWithOAuth(
+      final result = await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo:
             kIsWeb ? null : 'io.supabase.flutterquickstart://login-callback/',
-        authScreenLaunchMode: LaunchMode.externalApplication,
+        authScreenLaunchMode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
       );
+
+      // For web, the result will be true if the OAuth flow started successfully
+      // The actual sign-in happens when the user is redirected back
+      if (!result && mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -37,6 +49,9 @@ class _AuthScreenState extends State<AuthScreen> {
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
+      setState(() {
+        _isLoading = false;
+      });
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,12 +60,9 @@ class _AuthScreenState extends State<AuthScreen> {
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -59,12 +71,22 @@ class _AuthScreenState extends State<AuthScreen> {
       _isLoading = true;
     });
     try {
-      await Supabase.instance.client.auth.signInWithOAuth(
+      final result = await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.facebook,
         redirectTo:
             kIsWeb ? null : 'io.supabase.flutterquickstart://login-callback/',
-        authScreenLaunchMode: LaunchMode.externalApplication,
+        authScreenLaunchMode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
       );
+
+      // For web, the result will be true if the OAuth flow started successfully
+      // The actual sign-in happens when the user is redirected back
+      if (!result && mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,6 +95,9 @@ class _AuthScreenState extends State<AuthScreen> {
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
+      setState(() {
+        _isLoading = false;
+      });
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,12 +106,9 @@ class _AuthScreenState extends State<AuthScreen> {
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -127,18 +149,42 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.only(bottom: 16, left: 24, right: 24),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-            ),
-            child: const Text('Send Reset Link',
-                style: TextStyle(color: Colors.white)),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Send Reset Link',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -736,39 +782,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
-
-                  // Traveler Pass teaser
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E3A5F),
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: const Color(0xFF4F46E5), width: 1),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.star, color: Colors.amber, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Traveler Pass',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          '• Unlimited • \$4.99/mo',
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-
                   const SizedBox(height: 24),
 
                   // Get started text
@@ -788,32 +801,32 @@ class _AuthScreenState extends State<AuthScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Google button
-                      GestureDetector(
-                        onTap: _isLoading ? null : _signInWithGoogle,
-                        child: Container(
-                          width: 60,
-                          height: 60,
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.grey.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'G',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 24,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      // Google button - TEMPORARILY DISABLED
+                      // GestureDetector(
+                      //   onTap: _isLoading ? null : _signInWithGoogle,
+                      //   child: Container(
+                      //     width: 60,
+                      //     height: 60,
+                      //     margin: const EdgeInsets.symmetric(horizontal: 16),
+                      //     decoration: BoxDecoration(
+                      //       color: Colors.white,
+                      //       borderRadius: BorderRadius.circular(16),
+                      //       border: Border.all(
+                      //         color: Colors.grey.withValues(alpha: 0.3),
+                      //       ),
+                      //     ),
+                      //     child: const Center(
+                      //       child: Text(
+                      //         'G',
+                      //         style: TextStyle(
+                      //           color: Colors.black,
+                      //           fontWeight: FontWeight.bold,
+                      //           fontSize: 24,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
 
                       // Facebook button
                       GestureDetector(
