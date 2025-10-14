@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@11.1.0?target=deno";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +24,7 @@ if (!STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2024-06-20",
   httpClient: Stripe.createFetchHttpClient(),
 });
 
@@ -100,23 +100,50 @@ serve(async (req) => {
 
     console.log("Customer lookup:", { hasCustomer: !!customer, error });
 
-    if (error || !customer) {
+    let stripeCustomerId: string | null = null;
+
+    // If we have a customer record, verify it exists in Stripe
+    if (customer?.stripe_customer_id) {
+      try {
+        console.log("Verifying Stripe customer:", customer.stripe_customer_id);
+        await stripe.customers.retrieve(customer.stripe_customer_id);
+        stripeCustomerId = customer.stripe_customer_id;
+        console.log("Stripe customer verified");
+      } catch (stripeError) {
+        console.log(
+          "Stripe customer not found, will create new one:",
+          stripeError.message
+        );
+        stripeCustomerId = null;
+      }
+    }
+
+    // Create new customer if needed
+    if (!stripeCustomerId) {
       console.log("Creating new Stripe customer for user:", user.id);
       const stripeCustomer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_id: user.id },
       });
+      stripeCustomerId = stripeCustomer.id;
 
-      const { error: insertError } = await supabaseAdmin
+      // Update or insert customer record
+      const { error: upsertError } = await supabaseAdmin
         .from("customers")
-        .insert({ id: user.id, stripe_customer_id: stripeCustomer.id });
+        .upsert({
+          id: user.id,
+          stripe_customer_id: stripeCustomerId,
+          updated_at: new Date().toISOString(),
+        });
 
-      if (insertError) {
-        console.error("Error inserting customer:", insertError);
+      if (upsertError) {
+        console.error("Error upserting customer:", upsertError);
+      } else {
+        console.log("Customer record updated in database");
       }
-
-      customer = { stripe_customer_id: stripeCustomer.id };
     }
+
+    customer = { stripe_customer_id: stripeCustomerId };
 
     console.log(
       "Creating checkout session for customer:",
