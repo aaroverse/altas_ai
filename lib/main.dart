@@ -19,6 +19,7 @@ import 'views/auth_screen.dart';
 import 'views/profile_screen.dart';
 import 'views/upgrade_view.dart';
 import 'services/subscription_manager.dart';
+import 'services/preferences_manager.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -225,7 +226,17 @@ class MyApp extends StatelessWidget {
       theme: darkTheme,
       darkTheme: darkTheme,
       themeMode: ThemeMode.dark,
-      home: const AuthGate(),
+      home: kIsWeb
+          ? Scaffold(
+              backgroundColor: colorBackgroundDark,
+              body: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: const AuthGate(),
+                ),
+              ),
+            )
+          : const AuthGate(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -265,6 +276,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Uint8List? _imageBytes;
   String _language = 'English';
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadLanguagePreference();
+  }
+
+  Future<void> _loadLanguagePreference() async {
+    final savedLanguage = await PreferencesManager.getDefaultLanguage();
+    setState(() {
+      _language = savedLanguage;
+    });
+  }
+
   // Generic method to get an image
   Future<void> _getImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -298,11 +323,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   // Method to handle language change
-  void _handleLanguageChanged(String? newLanguage) {
+  void _handleLanguageChanged(String? newLanguage) async {
     if (newLanguage != null) {
       setState(() {
         _language = newLanguage;
       });
+      // Save the preference
+      await PreferencesManager.setDefaultLanguage(newLanguage);
     }
   }
 
@@ -379,7 +406,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           });
 
           // Increment scan usage with enhanced metadata
-          debugPrint('Incrementing scan usage after successful decode');
           await SubscriptionManager.incrementScanUsage(
             targetLanguage: _language,
             webhookResponse: decodedResponse,
@@ -423,7 +449,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _errorMessage = '';
       _imageFile = null;
       _imageBytes = null;
-      _language = 'English';
+      // Don't reset language - keep user's preference
     });
 
     // Check if user has reached daily limit and show upgrade prompt when returning to main screen
@@ -442,13 +468,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _redirectToCheckout(String priceId) async {
-    print('🟢 _redirectToCheckout called with priceId: $priceId');
-    debugPrint('Attempting to redirect to checkout for price: $priceId');
-
     // Check if user is authenticated
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      debugPrint('User not authenticated');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -468,9 +490,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     try {
-      debugPrint('User authenticated: ${user.id}');
-      debugPrint('Calling edge function with priceId: $priceId');
-
       // Verify we have a valid session
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) {
@@ -482,18 +501,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         body: {'priceId': priceId},
       );
 
-      debugPrint('Edge function response status: ${response.status}');
-      debugPrint('Edge function response data: ${response.data}');
-
       if (response.status == 200 && response.data != null) {
         if (response.data['url'] != null) {
           final checkoutUrl = response.data['url'];
-          debugPrint('Checkout URL: $checkoutUrl');
 
           if (await canLaunchUrl(Uri.parse(checkoutUrl))) {
             await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_self');
           } else {
-            debugPrint('Could not launch URL');
             throw 'Could not launch $checkoutUrl';
           }
         } else if (response.data['error'] != null) {
@@ -506,7 +520,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         throw 'Server responded with status ${response.status}: $errorMessage';
       }
     } catch (error) {
-      debugPrint('Error during checkout redirect: ${error.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -578,12 +591,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       case AppState.error:
         return ErrorView(message: _errorMessage, onReset: _resetState);
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
   }
 
   @override

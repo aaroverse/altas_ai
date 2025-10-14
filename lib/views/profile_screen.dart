@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/subscription_manager.dart';
+import '../services/preferences_manager.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -27,6 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _fullNameController = TextEditingController();
   Uint8List? _avatarBytes;
   Map<String, dynamic>? _subscriptionInfo;
+  String _defaultLanguage = 'English';
 
   @override
   void initState() {
@@ -34,6 +36,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
     _loadSubscriptionInfo();
     _fetchAppConfig();
+    _loadLanguagePreference();
+  }
+
+  Future<void> _loadLanguagePreference() async {
+    final language = await PreferencesManager.getDefaultLanguage();
+    if (mounted) {
+      setState(() {
+        _defaultLanguage = language;
+      });
+    }
   }
 
   Future<void> _fetchAppConfig() async {
@@ -1006,6 +1018,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildLanguagePreferenceCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.language,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Default Translation Language',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'This language will be used by default when translating menus',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _defaultLanguage,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFF1A1A1A),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
+              ),
+            ),
+            dropdownColor: const Color(0xFF2A2A2A),
+            style: const TextStyle(color: Colors.white),
+            items: PreferencesManager.availableLanguages.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (String? newValue) async {
+              if (newValue != null) {
+                setState(() {
+                  _defaultLanguage = newValue;
+                });
+                await PreferencesManager.setDefaultLanguage(newValue);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Default language set to $newValue'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogOutButton() {
     return Container(
       width: double.infinity,
@@ -1098,6 +1210,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildSubscriptionCard(),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Preferences',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLanguagePreferenceCard(),
                   const SizedBox(height: 32),
                   const Text(
                     'Account Actions',

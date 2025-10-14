@@ -20,8 +20,8 @@ class _UpgradeViewState extends State<UpgradeView> {
     final isAnnually = _selectedCycle == BillingCycle.annually;
     // Replace with your actual Price IDs
     final priceId = isAnnually
-        ? 'price_1SFAhOFQWjnlvKIaG8GSOjEa'
-        : 'price_1SFAdwFQWjnlvKIaanNQoV5v';
+        ? 'price_1SHlyeFUg6trB7sty0JububE'
+        : 'price_1SHlz4FUg6trB7stnCAWlKwl';
     final priceString = isAnnually ? '\$34.99/year' : '\$4.99/month';
 
     return Column(
