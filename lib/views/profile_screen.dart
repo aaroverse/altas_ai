@@ -286,6 +286,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _showResetPasswordDialog() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    // Check if user signed in with OAuth (Google/Facebook)
+    final isOAuthUser = user?.appMetadata['provider'] != 'email';
+
+    if (isOAuthUser) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF2A2A2A),
+          title: const Text(
+            'Password Not Available',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            'You signed in with Google or Facebook. Password login is not available for social login accounts. To use email/password login, please create a new account with email.',
+            style: TextStyle(color: Colors.grey),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK', style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: const Text(
+          'Reset Password',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'We will send a password reset link to ${user?.email}. Click the link in the email to set a new password.',
+          style: const TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+            child: const Text('Send Reset Link',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && user?.email != null) {
+      try {
+        await Supabase.instance.client.auth.resetPasswordForEmail(
+          user!.email!,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password reset link sent! Check your email.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${error.toString()}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _signOut() async {
     setState(() {
       _isLoading = true;
@@ -1118,6 +1204,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildResetPasswordButton() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3), width: 1),
+      ),
+      child: InkWell(
+        onTap: _isLoading ? null : _showResetPasswordDialog,
+        child: const Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Reset Password',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(Icons.lock_reset, color: Colors.white, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLogOutButton() {
     return Container(
       width: double.infinity,
@@ -1184,55 +1300,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           body: AbsorbPointer(
             absorbing: _isLoading || _isProcessingSubscription,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'User Info',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'User Info',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildUserInfoCard(),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Subscription Management',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSubscriptionCard(),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Preferences',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLanguagePreferenceCard(),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Account Actions',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildResetPasswordButton(),
+                      const SizedBox(height: 12),
+                      _buildLogOutButton(),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _buildUserInfoCard(),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Subscription Management',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSubscriptionCard(),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Preferences',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildLanguagePreferenceCard(),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Account Actions',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildLogOutButton(),
-                ],
+                ),
               ),
             ),
           ),
