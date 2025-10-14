@@ -1,165 +1,220 @@
-# 🌐 Netlify Deployment Guide for Altas AI
+# Netlify Deployment Guide
 
-## 🚀 Quick Setup
+## Environment Variables Required
 
-### 1. Connect Your Repository
+Add these environment variables in your Netlify dashboard under **Site settings** → **Environment variables**:
 
-1. Go to [Netlify](https://netlify.com)
-2. Click "New site from Git"
-3. Connect your GitHub/GitLab repository
-4. Select your Altas AI repository
+### Required Variables
 
-### 2. Configure Build Settings
+```bash
+# Supabase Configuration
+SUPABASE_URL=https://gkpanxesanutgpwhsuzr.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcGFueGVzYW51dGdwd2hzdXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0ODQyNzcsImV4cCI6MjA3NTA2MDI3N30.PX21IVUdTc1jmVDkNdZtUi0BTpK0jHfPJDi3M1NFsDE
 
-Netlify will automatically detect the `netlify.toml` file, but verify these settings:
+# Webhook Configuration (Supabase Edge Function)
+WEBHOOK_URL=https://gkpanxesanutgpwhsuzr.supabase.co/functions/v1/process-menu
 
-- **Build command**: `flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=WEBHOOK_URL=$WEBHOOK_URL --dart-define=PRODUCTION=true`
-- **Publish directory**: `build/web`
-- **Base directory**: (leave empty)
-
-### 3. Set Environment Variables
-
-In Netlify Dashboard → Site settings → Environment variables, add:
-
-```
-SUPABASE_URL = https://gkpanxesanutgpwhsuzr.supabase.co
-SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcGFueGVzYW51dGdwd2hzdXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0ODQyNzcsImV4cCI6MjA3NTA2MDI3N30.PX21IVUdTc1jmVDkNdZtUi0BTpK0jHfPJDi3M1NFsDE
-WEBHOOK_URL = http://srv858154.hstgr.cloud:5678/webhook/afb1492e-cda4-44d5-9906-f91d7525d003
-PRODUCTION = true
+# Production Flag
+PRODUCTION=true
 ```
 
-### 4. Deploy!
+## Build Settings
 
-Click "Deploy site" and Netlify will:
+### Build Command
 
-1. Install Flutter
-2. Build your web app
-3. Deploy to a live URL
+```bash
+flutter build web --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=WEBHOOK_URL=$WEBHOOK_URL --dart-define=PRODUCTION=$PRODUCTION --release
+```
 
-## 🔧 Configuration Files
+### Publish Directory
 
-### `netlify.toml` Features:
+```
+build/web
+```
 
-- ✅ Automatic Flutter web builds
-- ✅ SPA routing support (redirects)
-- ✅ Security headers
-- ✅ Caching optimization
-- ✅ Environment variable injection
+### Base Directory
 
-### Build Process:
+```
+(leave empty or set to root)
+```
 
-1. Netlify clones your repo
-2. Installs Flutter SDK
-3. Runs `flutter pub get`
-4. Builds with your environment variables
-5. Deploys to CDN
+## Step-by-Step Deployment
 
-## 🌍 Custom Domain (Optional)
+### 1. Install Flutter Build Plugin (if needed)
 
-### Add Your Domain:
+If Netlify doesn't have Flutter pre-installed, you may need to add a build plugin or use a custom Docker image.
 
-1. Go to Site settings → Domain management
-2. Click "Add custom domain"
-3. Enter your domain (e.g., `altasai.com`)
-4. Follow DNS configuration instructions
-
-### SSL Certificate:
-
-Netlify provides free SSL certificates automatically!
-
-## 🔍 Monitoring & Analytics
-
-### Build Logs:
-
-- Check Deploys tab for build status
-- View detailed logs for troubleshooting
-
-### Performance:
-
-- Netlify provides built-in analytics
-- Monitor Core Web Vitals
-- Track user engagement
-
-## 🚨 Troubleshooting
-
-### Common Issues:
-
-#### Build Fails - Flutter Not Found
-
-**Solution**: Netlify automatically installs Flutter, but if it fails:
+**Option A: Use Netlify Build Plugin**
+Create a `netlify.toml` file in your project root:
 
 ```toml
+[build]
+  command = "flutter build web --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=WEBHOOK_URL=$WEBHOOK_URL --dart-define=PRODUCTION=$PRODUCTION --release"
+  publish = "build/web"
+
 [build.environment]
-  FLUTTER_VERSION = "3.24.0"
+  FLUTTER_VERSION = "3.24.0"  # Use your Flutter version
+
+[[plugins]]
+  package = "netlify-plugin-flutter"
 ```
 
-#### Environment Variables Not Working
+**Option B: Use Custom Build Image**
+In Netlify UI, set the build image to one that includes Flutter, or use GitHub Actions to build and deploy.
 
-**Solution**:
+### 2. Configure Redirect Rules
 
-1. Check spelling in Netlify dashboard
-2. Ensure no extra spaces
-3. Redeploy after adding variables
+Create a `_redirects` file in your `web` folder (or it will be in `build/web` after build):
 
-#### Routing Issues (404 on refresh)
-
-**Solution**: The `netlify.toml` includes redirect rules:
-
-```toml
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+```
+/*    /index.html   200
 ```
 
-#### Supabase Connection Issues
+This ensures Flutter's routing works correctly.
 
-**Solution**:
+### 3. Add Environment Variables in Netlify
 
-1. Verify environment variables are set
-2. Check Supabase project is active
-3. Ensure anon key has correct permissions
+1. Go to your Netlify site dashboard
+2. Navigate to **Site settings** → **Environment variables**
+3. Click **Add a variable**
+4. Add each variable listed above
 
-## 📱 Progressive Web App (PWA)
+### 4. Configure Supabase for Netlify Domain
 
-Your app is PWA-ready with:
+Once deployed, you need to add your Netlify URL to Supabase:
 
-- ✅ Web manifest (`manifest.json`)
-- ✅ Service worker (Flutter generates)
-- ✅ Installable on mobile devices
-- ✅ Offline capabilities
+1. Go to Supabase Dashboard → **Authentication** → **URL Configuration**
+2. Add your Netlify URLs to **Redirect URLs**:
+   ```
+   https://your-site-name.netlify.app/*
+   https://your-site-name.netlify.app
+   ```
+3. Set **Site URL** to: `https://your-site-name.netlify.app`
 
-## 🔄 Continuous Deployment
+### 5. Configure OAuth Providers
 
-Every push to your main branch will:
+For Google/Facebook OAuth to work on your Netlify domain:
 
-1. Trigger automatic build
-2. Deploy new version
-3. Update live site
-4. Maintain zero downtime
+**In Supabase:**
 
-## 📊 Performance Optimization
+- Already configured (uses Supabase callback URL)
 
-Netlify automatically provides:
+**In Google Cloud Console:**
 
-- **CDN**: Global content delivery
-- **Compression**: Gzip/Brotli
-- **Caching**: Static asset optimization
-- **HTTP/2**: Modern protocol support
+1. Go to **APIs & Services** → **Credentials**
+2. Edit your OAuth 2.0 Client ID
+3. Add to **Authorized JavaScript origins**:
+   ```
+   https://your-site-name.netlify.app
+   ```
+4. Authorized redirect URIs should already have:
+   ```
+   https://gkpanxesanutgpwhsuzr.supabase.co/auth/v1/callback
+   ```
 
-## 🎯 Next Steps
+**In Facebook Developers:**
 
-1. **Deploy**: Follow the setup steps above
-2. **Test**: Verify all features work on live site
-3. **Monitor**: Check build logs and performance
-4. **Optimize**: Use Netlify analytics for insights
-5. **Scale**: Add custom domain and advanced features
+1. Go to your app → **Settings** → **Basic**
+2. Add your Netlify domain to **App Domains**
+3. In **Facebook Login** → **Settings**, add:
+   ```
+   https://gkpanxesanutgpwhsuzr.supabase.co/auth/v1/callback
+   ```
 
-## 📞 Support
+## Alternative: Deploy via GitHub Actions
 
-- **Netlify Docs**: https://docs.netlify.com
-- **Flutter Web**: https://flutter.dev/web
-- **Build Issues**: Check Netlify build logs
-- **App Issues**: Test locally first with `flutter run -d chrome`
+If Netlify's Flutter support is limited, you can build locally or via GitHub Actions and deploy the `build/web` folder.
 
-Your Altas AI web app will be live at: `https://your-site-name.netlify.app` 🚀
+### GitHub Actions Workflow
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to Netlify
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} --dart-define=WEBHOOK_URL=${{ secrets.WEBHOOK_URL }} --dart-define=PRODUCTION=true --release
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.0
+        with:
+          publish-dir: "./build/web"
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+```
+
+Then add these secrets to your GitHub repository:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `WEBHOOK_URL`
+- `NETLIFY_AUTH_TOKEN` (from Netlify)
+- `NETLIFY_SITE_ID` (from Netlify)
+
+## Troubleshooting
+
+### Build Fails
+
+- Check Flutter version compatibility
+- Ensure all dependencies are compatible with web
+- Check build logs for specific errors
+
+### OAuth Not Working
+
+- Verify redirect URLs in Supabase
+- Check OAuth provider settings (Google/Facebook)
+- Ensure CORS is configured correctly
+
+### App Shows Dev Config
+
+- Verify environment variables are set in Netlify
+- Check that `PRODUCTION=true` is set
+- Rebuild and redeploy
+
+### Images/Assets Not Loading
+
+- Check that assets are properly included in `pubspec.yaml`
+- Verify paths are correct for web deployment
+
+## Post-Deployment Checklist
+
+- [ ] Environment variables are set in Netlify
+- [ ] Netlify URL is added to Supabase redirect URLs
+- [ ] OAuth providers are configured with Netlify domain
+- [ ] Test sign-up with email
+- [ ] Test sign-in with Facebook (Google is disabled)
+- [ ] Test password reset
+- [ ] Test menu scanning
+- [ ] Test subscription upgrade flow
+- [ ] Verify all images and assets load correctly
+
+## Security Notes
+
+⚠️ **Important**:
+
+- The `SUPABASE_ANON_KEY` is safe to expose in client-side code (it's public)
+- Never expose your Supabase service role key
+- Keep your Netlify auth token and site ID secret
+- Use Row Level Security (RLS) in Supabase to protect data
