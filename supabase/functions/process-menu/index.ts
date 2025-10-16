@@ -64,31 +64,8 @@ serve(async (req) => {
     }
 
     // Get the response from the webhook
-    let responseData;
-    const responseText = await webhookResponse.text();
-
-    console.log(`Webhook response length: ${responseText.length} characters`);
-    console.log(`First 200 chars: ${responseText.substring(0, 200)}`);
-
-    try {
-      responseData = JSON.parse(responseText);
-      console.log("Webhook response parsed successfully");
-    } catch (parseError) {
-      console.error("Failed to parse webhook response as JSON:", parseError);
-      console.error("Response text:", responseText);
-
-      return new Response(
-        JSON.stringify({
-          error: "Failed to process menu image",
-          details: "Webhook returned invalid JSON response",
-          responsePreview: responseText.substring(0, 500),
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    const responseData = await webhookResponse.json();
+    console.log("Webhook response received successfully");
 
     // Return the response with CORS headers
     return new Response(JSON.stringify(responseData), {
@@ -102,7 +79,6 @@ serve(async (req) => {
       JSON.stringify({
         error: "Failed to process menu image",
         details: error.message,
-        stack: error.stack,
       }),
       {
         status: 500,
